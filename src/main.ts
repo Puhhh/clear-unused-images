@@ -2,6 +2,7 @@ import { Plugin, TFile, Notice } from 'obsidian';
 import { OzanClearImagesSettingsTab } from './settings';
 import { OzanClearImagesSettings, DEFAULT_SETTINGS } from './settings';
 import { LogsModal } from './modals';
+import { CleanupReviewModal } from './reviewModal';
 import * as Util from './util';
 import { createPeriodicCleanupScheduler, createVaultLoadCleanupScheduler } from './startupCleanup';
 
@@ -12,6 +13,10 @@ export default class OzanClearImages extends Plugin {
     periodicCleanupTimerId: number | undefined = undefined;
     periodicCleanupScheduler: ReturnType<typeof createPeriodicCleanupScheduler<number>> | undefined = undefined;
     cleanupInProgress = false;
+    private vaultLayoutReady = false;
+    private vaultMetadataResolved = false;
+    private vaultReadyCallbacks: Array<() => void | Promise<void>> = [];
+    private vaultReadyListenersRegistered = false;
 
     async onload() {
         console.log('Clear Unused Images plugin loaded...');
@@ -61,11 +66,7 @@ export default class OzanClearImages extends Plugin {
 
         this.startupCleanupScheduled = true;
         const scheduleCleanup = createVaultLoadCleanupScheduler(
-            (callback) => {
-                this.app.workspace.onLayoutReady(() => {
-                    void callback();
-                });
-            },
+            (callback) => this.onVaultReady(callback),
             async (type) => {
                 await this.clearUnusedAttachments(type);
             }
@@ -77,9 +78,7 @@ export default class OzanClearImages extends Plugin {
     refreshPeriodicCleanup(): void {
         if (!this.periodicCleanupScheduler) {
             this.periodicCleanupScheduler = createPeriodicCleanupScheduler<number>(
-                (callback) => {
-                    this.app.workspace.onLayoutReady(callback);
-                },
+                (callback) => this.onVaultReady(callback),
                 (callback, intervalMs) => {
                     this.clearPeriodicCleanupTimer();
                     const timerId = window.setInterval(callback, intervalMs);
@@ -93,7 +92,7 @@ export default class OzanClearImages extends Plugin {
                     }
                 },
                 async (type) => {
-                    await this.clearUnusedAttachments(type, { silentIfBusy: true });
+                    await this.clearUnusedAttachments(type);
                 }
             );
         }
@@ -112,6 +111,52 @@ export default class OzanClearImages extends Plugin {
 
         if (this.settings.autoCleanEveryXMinutes && this.settings.deleteOption === 'permanent') {
             new Notice('Periodic cleanup is disabled while Permanently Delete is selected.');
+        }
+    }
+
+    onVaultReady(callback: () => void | Promise<void>): void {
+        this.ensureVaultReadyListeners();
+
+        if (this.vaultLayoutReady && this.vaultMetadataResolved) {
+            void callback();
+            return;
+        }
+
+        this.vaultReadyCallbacks.push(callback);
+    }
+
+    private ensureVaultReadyListeners(): void {
+        if (this.vaultReadyListenersRegistered) {
+            return;
+        }
+
+        this.vaultReadyListenersRegistered = true;
+        this.vaultLayoutReady = this.app.workspace.layoutReady;
+        this.vaultMetadataResolved = Object.keys(this.app.metadataCache.resolvedLinks).length > 0;
+
+        this.app.workspace.onLayoutReady(() => {
+            this.vaultLayoutReady = true;
+            this.flushVaultReadyCallbacks();
+        });
+
+        this.registerEvent(
+            this.app.metadataCache.on('resolved', () => {
+                this.vaultMetadataResolved = true;
+                this.flushVaultReadyCallbacks();
+            })
+        );
+
+        this.flushVaultReadyCallbacks();
+    }
+
+    private flushVaultReadyCallbacks(): void {
+        if (!this.vaultLayoutReady || !this.vaultMetadataResolved || this.vaultReadyCallbacks.length === 0) {
+            return;
+        }
+
+        const callbacks = this.vaultReadyCallbacks.splice(0, this.vaultReadyCallbacks.length);
+        for (const callback of callbacks) {
+            void callback();
         }
     }
 
@@ -139,6 +184,17 @@ export default class OzanClearImages extends Plugin {
             var unusedAttachments: TFile[] = await Util.getUnusedAttachments(this.app, type);
             var len = unusedAttachments.length;
             if (len > 0) {
+                if (type === 'all') {
+                    const reviewAccepted = await new CleanupReviewModal(
+                        this.app,
+                        unusedAttachments.map((file) => file.path)
+                    ).prompt();
+                    if (!reviewAccepted) {
+                        new Notice('Cleanup cancelled.');
+                        return;
+                    }
+                }
+
                 if (this.settings.deleteOption === 'permanent' && !this.confirmPermanentDelete(len, type)) {
                     new Notice('Cleanup cancelled.');
                     return;

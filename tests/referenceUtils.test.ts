@@ -5,6 +5,7 @@ import {
     extractMarkdownLinkMatches,
     hasImageExtension,
     isPathCoveredByExcludedFolder,
+    parseMarkdownLinkDestination,
     resolveVaultAttachmentReference,
 } from '../src/referenceUtils.ts';
 
@@ -25,6 +26,30 @@ test('resolveVaultAttachmentReference prefers resolved vault path and ignores ex
     assert.equal(resolvedPath, 'assets/cover.webp');
     assert.equal(
         resolveVaultAttachmentReference('https://example.com/cover.webp', 'notes/daily.md', () => null, () => false),
+        null
+    );
+});
+
+test('resolveVaultAttachmentReference respects cleanup scope', () => {
+    assert.equal(
+        resolveVaultAttachmentReference(
+            'report.pdf',
+            'notes/daily.md',
+            (referencePath) => (referencePath === 'report.pdf' ? 'docs/report.pdf' : null),
+            () => false,
+            'all'
+        ),
+        'docs/report.pdf'
+    );
+
+    assert.equal(
+        resolveVaultAttachmentReference(
+            'report.pdf',
+            'notes/daily.md',
+            (referencePath) => (referencePath === 'report.pdf' ? 'docs/report.pdf' : null),
+            () => false,
+            'image'
+        ),
         null
     );
 });
@@ -53,4 +78,10 @@ test('extractMarkdownLinkMatches keeps paths with parentheses intact', () => {
     );
 
     assert.deepEqual(matches, ['[photo](assets/photo (1).png)', '[doc](files/report.pdf)']);
+});
+
+test('parseMarkdownLinkDestination strips titles and angle brackets', () => {
+    assert.equal(parseMarkdownLinkDestination('[img](assets/photo.png "caption")'), 'assets/photo.png');
+    assert.equal(parseMarkdownLinkDestination('[img](<assets/photo (1).png>)'), 'assets/photo (1).png');
+    assert.equal(parseMarkdownLinkDestination('[doc](<files/report.pdf> "caption")'), 'files/report.pdf');
 });

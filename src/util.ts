@@ -8,6 +8,7 @@ import {
     resolveVaultAttachmentReference,
     splitExcludedFolders,
 } from './referenceUtils';
+import { walkFrontmatterValues } from './frontmatterWalker';
 
 /* ------------------ Image Handlers  ------------------ */
 
@@ -20,7 +21,7 @@ export const getUnusedAttachments = async (app: App, type: 'image' | 'all') => {
     var usedAttachmentsSet: Set<string>;
 
     // Get Used Attachments in All Markdown Files
-    usedAttachmentsSet = await getAttachmentPathSetForVault(app);
+    usedAttachmentsSet = await getAttachmentPathSetForVault(app, type);
 
     // Compare All Attachments vs Used Attachments
     allAttachmentsInVault.forEach((attachment) => {
@@ -50,7 +51,7 @@ const getAttachmentsInVault = (app: App, type: 'image' | 'all'): TFile[] => {
 };
 
 // New Method for Getting All Used Attachments
-const getAttachmentPathSetForVault = async (app: App): Promise<Set<string>> => {
+const getAttachmentPathSetForVault = async (app: App, type: 'image' | 'all'): Promise<Set<string>> => {
     var attachmentsSet: Set<string> = new Set();
     var resolvedLinks = app.metadataCache.resolvedLinks;
     if (resolvedLinks) {
@@ -71,23 +72,7 @@ const getAttachmentPathSetForVault = async (app: App): Promise<Set<string>> => {
             // Frontmatter
             let fileCache = app.metadataCache.getFileCache(obsFile);
             if (fileCache.frontmatter) {
-                let frontmatter = fileCache.frontmatter;
-                for (let k of Object.keys(frontmatter)) {
-                    if (typeof frontmatter[k] === 'string') {
-                        if (frontmatter[k].match(bannerRegex)) {
-                            let fileName = frontmatter[k].match(bannerRegex)[1];
-                            let file = app.metadataCache.getFirstLinkpathDest(fileName, obsFile.path);
-                            if (file) {
-                                addToSet(attachmentsSet, file.path);
-                            }
-                        } else {
-                            const resolvedPath = resolveAttachmentReference(app, frontmatter[k], obsFile.path);
-                            if (resolvedPath) {
-                                addToSet(attachmentsSet, resolvedPath);
-                            }
-                        }
-                    }
-                }
+                collectFrontmatterAttachmentReferences(fileCache.frontmatter, app, obsFile.path, attachmentsSet, type);
             }
             // Any Additional Link
             let linkMatches: LinkMatch[] = await getAllLinkMatchesInFile(obsFile, app);
@@ -220,7 +205,12 @@ const addToSet = (setObj: Set<string>, value: string) => {
     }
 };
 
-const resolveAttachmentReference = (app: App, reference: string, sourcePath: string): string | null => {
+const resolveAttachmentReference = (
+    app: App,
+    reference: string,
+    sourcePath: string,
+    type: 'image' | 'all'
+): string | null => {
     return resolveVaultAttachmentReference(
         reference,
         sourcePath,
@@ -230,9 +220,43 @@ const resolveAttachmentReference = (app: App, reference: string, sourcePath: str
         },
         (referencePath) => {
             const file = app.vault.getAbstractFileByPath(referencePath);
-            return file instanceof TFile && (hasImageExtension(file.path) || file.extension !== 'md');
-        }
+            if (!(file instanceof TFile)) {
+                return false;
+            }
+
+            if (type === 'image') {
+                return hasImageExtension(file.path);
+            }
+
+            return file.extension !== 'md' && file.extension !== 'canvas';
+        },
+        type
     );
+};
+
+const collectFrontmatterAttachmentReferences = (
+    frontmatterValue: unknown,
+    app: App,
+    sourcePath: string,
+    attachmentsSet: Set<string>,
+    type: 'image' | 'all'
+) => {
+    walkFrontmatterValues(frontmatterValue, (stringValue) => {
+        const bannerMatch = stringValue.match(bannerRegex);
+        if (bannerMatch) {
+            const fileName = bannerMatch[1];
+            const file = app.metadataCache.getFirstLinkpathDest(fileName, sourcePath);
+            if (file && (type === 'all' || hasImageExtension(file.path))) {
+                addToSet(attachmentsSet, file.path);
+            }
+            return;
+        }
+
+        const resolvedPath = resolveAttachmentReference(app, stringValue, sourcePath, type);
+        if (resolvedPath) {
+            addToSet(attachmentsSet, resolvedPath);
+        }
+    });
 };
 
 const getErrorMessage = (error: unknown): string => {

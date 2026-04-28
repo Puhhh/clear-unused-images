@@ -1,6 +1,9 @@
 .unused-images-logs {
     margin-bottom: 13px;
     margin-top: 5px;
+    max-height: 60vh;
+    overflow-y: auto;
+    white-space: pre-wrap;
 }
 
 .unused-images-center-wrapper {

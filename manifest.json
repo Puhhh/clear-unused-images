@@ -1,7 +1,7 @@
 {
     "id": "clear-unused-images",
     "name": "Clear Unused Images",
-    "version": "1.4.1",
+    "version": "1.4.2",
     "minAppVersion": "0.11.13",
     "description": "Fork of oz-clear-unused-images for clearing unused images from Obsidian vaults.",
     "author": "Aleksei Blinov",

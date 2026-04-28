@@ -21,10 +21,15 @@ export const resolveVaultAttachmentReference = (
     reference: string,
     sourcePath: string,
     resolveLinkpathDest: (referencePath: string, sourceFilePath: string) => string | null,
-    hasExactPath: (path: string) => boolean
+    hasExactPath: (path: string) => boolean,
+    scope: 'image' | 'all' = 'image'
 ): string | null => {
     const trimmedReference = reference.trim();
-    if (!trimmedReference || EXTERNAL_REFERENCE_REGEX.test(trimmedReference) || !hasImageExtension(trimmedReference)) {
+    if (!trimmedReference || EXTERNAL_REFERENCE_REGEX.test(trimmedReference)) {
+        return null;
+    }
+
+    if (scope === 'image' && !hasImageExtension(trimmedReference)) {
         return null;
     }
 
@@ -34,6 +39,30 @@ export const resolveVaultAttachmentReference = (
     }
 
     return hasExactPath(trimmedReference) ? trimmedReference : null;
+};
+
+export const parseMarkdownLinkDestination = (markdownMatch: string): string => {
+    const openParenIndex = markdownMatch.indexOf('](');
+    if (openParenIndex === -1) {
+        return '';
+    }
+
+    const rawDestination = markdownMatch.slice(openParenIndex + 2, -1).trim();
+    if (!rawDestination) {
+        return '';
+    }
+
+    if (rawDestination.startsWith('<')) {
+        const closingAngleIndex = rawDestination.indexOf('>');
+        if (closingAngleIndex === -1) {
+            return '';
+        }
+
+        return unescapeMarkdownDestination(rawDestination.slice(1, closingAngleIndex).trim());
+    }
+
+    const destinationEnd = findMarkdownDestinationEnd(rawDestination);
+    return unescapeMarkdownDestination(rawDestination.slice(0, destinationEnd).trim());
 };
 
 export const splitExcludedFolders = (input: string): string[] => {
@@ -122,4 +151,31 @@ const findClosingDelimiter = (text: string, openingIndex: number, openingChar: s
     }
 
     return -1;
+};
+
+const findMarkdownDestinationEnd = (destination: string): number => {
+    let escaped = false;
+
+    for (let index = 0; index < destination.length; index++) {
+        const character = destination[index];
+        if (escaped) {
+            escaped = false;
+            continue;
+        }
+
+        if (character === '\\') {
+            escaped = true;
+            continue;
+        }
+
+        if (/\s/.test(character)) {
+            return index;
+        }
+    }
+
+    return destination.length;
+};
+
+const unescapeMarkdownDestination = (destination: string): string => {
+    return destination.replace(/\\([\\[\]()<>\s!#%&'*,.:;=?@^`~])/g, '$1');
 };
