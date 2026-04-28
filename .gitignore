@@ -1,17 +1,7 @@
-# Intellij
-*.iml
-.idea
+# Folders
+node_modules/
+.obsidian/
+error/
 
-# npm
-node_modules
-package-lock.json
-
-# build
-*.js.map
-main.js
-
-# obsidian
-data.json
-
-
+# Files
 .DS_Store

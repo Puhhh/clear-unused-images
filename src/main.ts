@@ -3,10 +3,12 @@ import { OzanClearImagesSettingsTab } from './settings';
 import { OzanClearImagesSettings, DEFAULT_SETTINGS } from './settings';
 import { LogsModal } from './modals';
 import * as Util from './util';
+import { createVaultLoadCleanupScheduler } from './startupCleanup';
 
 export default class OzanClearImages extends Plugin {
     settings: OzanClearImagesSettings;
     ribbonIconEl: HTMLElement | undefined = undefined;
+    startupCleanupScheduled = false;
 
     async onload() {
         console.log('Clear Unused Images plugin loaded...');
@@ -23,6 +25,7 @@ export default class OzanClearImages extends Plugin {
             callback: () => this.clearUnusedAttachments('all'),
         });
         this.refreshIconRibbon();
+        this.scheduleVaultLoadCleanup();
     }
 
     onunload() {
@@ -45,6 +48,26 @@ export default class OzanClearImages extends Plugin {
             });
         }
     };
+
+    scheduleVaultLoadCleanup(): void {
+        if (this.startupCleanupScheduled) {
+            return;
+        }
+
+        this.startupCleanupScheduled = true;
+        const scheduleCleanup = createVaultLoadCleanupScheduler(
+            (callback) => {
+                this.app.workspace.onLayoutReady(() => {
+                    void callback();
+                });
+            },
+            async (type) => {
+                await this.clearUnusedAttachments(type);
+            }
+        );
+
+        void scheduleCleanup(this.settings.autoCleanOnVaultLoad);
+    }
 
     // Compare Used Images with all images and return unused ones
     clearUnusedAttachments = async (type: 'all' | 'image') => {

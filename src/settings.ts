@@ -1,5 +1,6 @@
 import OzanClearImages from './main';
 import { PluginSettingTab, Setting, App } from 'obsidian';
+import { AUTO_CLEAN_ON_VAULT_LOAD_DEFAULT } from './startupCleanup';
 
 export interface OzanClearImagesSettings {
     deleteOption: string;
@@ -7,6 +8,7 @@ export interface OzanClearImagesSettings {
     excludedFolders: string;
     ribbonIcon: boolean;
     excludeSubfolders: boolean;
+    autoCleanOnVaultLoad: boolean;
 }
 
 export const DEFAULT_SETTINGS: OzanClearImagesSettings = {
@@ -15,6 +17,7 @@ export const DEFAULT_SETTINGS: OzanClearImagesSettings = {
     excludedFolders: '',
     ribbonIcon: false,
     excludeSubfolders: false,
+    autoCleanOnVaultLoad: AUTO_CLEAN_ON_VAULT_LOAD_DEFAULT,
 };
 
 export class OzanClearImagesSettingsTab extends PluginSettingTab {
@@ -49,6 +52,18 @@ export class OzanClearImagesSettingsTab extends PluginSettingTab {
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.logsModal).onChange((value) => {
                     this.plugin.settings.logsModal = value;
+                    this.plugin.saveSettings();
+                })
+            );
+
+        new Setting(containerEl)
+            .setName('Clean Images On Vault Load')
+            .setDesc(
+                'Automatically run the unused image cleanup once after the vault layout is ready. This setting only applies to images and starts working on the next vault load. Permanent delete will still ask for confirmation.'
+            )
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.autoCleanOnVaultLoad).onChange((value) => {
+                    this.plugin.settings.autoCleanOnVaultLoad = value;
                     this.plugin.saveSettings();
                 })
             );
@@ -90,14 +105,5 @@ export class OzanClearImagesSettingsTab extends PluginSettingTab {
                 })
             );
 
-        const coffeeDiv = containerEl.createDiv('coffee');
-        coffeeDiv.addClass('oz-coffee-div');
-        const coffeeLink = coffeeDiv.createEl('a', { href: 'https://ko-fi.com/L3L356V6Q' });
-        const coffeeImg = coffeeLink.createEl('img', {
-            attr: {
-                src: 'https://cdn.ko-fi.com/cdn/kofi2.png?v=3',
-            },
-        });
-        coffeeImg.height = 45;
     }
 }

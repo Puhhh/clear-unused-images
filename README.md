@@ -24,6 +24,17 @@ Please make sure that you select the destination for deleted images under the "C
 
 3. **Permanently Delete** - Files are destroyed permanently. You will not be able to revert them.
 
+### Clean Images On Vault Load
+
+You can enable automatic cleanup during vault startup with the `Clean Images On Vault Load` setting.
+
+![clean-images-on-vault-load](images/clean-images-on-vault-load.png)
+
+- The cleanup runs once after the vault layout is ready.
+- It only runs the image cleanup flow, not the `Clear Unused Attachments` command.
+- If you enable the toggle while Obsidian is already open, the change takes effect on the next vault load.
+- If `Permanently Delete` is selected, the existing confirmation dialog still appears before deletion starts.
+
 ### Excluded Folders
 
 You can exclude folders from which you do not want images to be removed during the scan. If there are multiple folders to exclude, separate them with commas. Please provide the full path inside the vault:
@@ -62,7 +73,7 @@ If all images are used, you will see the following message:
 
 -   [x] Creating settings for users to select the destination of the deleted files
 -   [x] Excluded folders settings for the scan
--   [ ] Images to be cleaned during load of the vault if users chooses.
+-   [x] Images to be cleaned during load of the vault if users chooses.
 -   [ ] Images to be cleaned every X minutes depending on user's choice
 
 ## Support
