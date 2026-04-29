@@ -15,7 +15,7 @@ export class LogsModal extends Modal {
         // Header
         const headerWrapper = contentEl.createEl('div');
         headerWrapper.addClass('unused-images-center-wrapper');
-        const headerEl = headerWrapper.createEl('h1', { text: 'Clear Unused Images - Logs' });
+        const headerEl = headerWrapper.createEl('h1', { text: 'Clear Unused Images Plus - Logs' });
         headerEl.addClass('modal-title');
 
         // Information to show

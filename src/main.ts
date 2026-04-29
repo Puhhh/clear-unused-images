@@ -19,12 +19,12 @@ export default class OzanClearImages extends Plugin {
     private vaultReadyListenersRegistered = false;
 
     async onload() {
-        console.log('Clear Unused Images plugin loaded...');
+        console.log('Clear Unused Images Plus plugin loaded...');
         this.addSettingTab(new OzanClearImagesSettingsTab(this.app, this));
         await this.loadSettings();
         this.addCommand({
             id: 'clear-images-obsidian',
-            name: 'Clear Unused Images',
+            name: 'Clear Unused Images Plus',
             callback: () => this.clearUnusedAttachments('image'),
         });
         this.addCommand({
@@ -39,7 +39,7 @@ export default class OzanClearImages extends Plugin {
 
     onunload() {
         this.clearPeriodicCleanupTimer();
-        console.log('Clear Unused Images plugin unloaded...');
+        console.log('Clear Unused Images Plus plugin unloaded...');
     }
 
     async loadSettings() {
@@ -53,7 +53,7 @@ export default class OzanClearImages extends Plugin {
     refreshIconRibbon = () => {
         this.ribbonIconEl?.remove();
         if (this.settings.ribbonIcon) {
-            this.ribbonIconEl = this.addRibbonIcon('image-file', 'Clear Unused Images', (event): void => {
+            this.ribbonIconEl = this.addRibbonIcon('image-file', 'Clear Unused Images Plus', (event): void => {
                 this.clearUnusedAttachments('image');
             });
         }

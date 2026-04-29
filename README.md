@@ -1,8 +1,10 @@
-# Clear Unused Images
+# Clear Unused Images Plus
 
-`Clear Unused Images` is a fork of [`oz-clear-unused-images`](https://github.com/ozntel/oz-clear-unused-images-obsidian).
+`Clear Unused Images Plus` is a fork of [`oz-clear-unused-images`](https://github.com/ozntel/oz-clear-unused-images-obsidian).
 
-The current fork is maintained by [Aleksei Blinov](https://github.com/Puhhh). The original plugin author is [Ozan](https://www.ozan.pl).
+The current fork is maintained by [Aleksei B](https://github.com/Puhhh). The original plugin author is [Ozan](https://www.ozan.pl).
+
+See the [CHANGELOG](CHANGELOG.md) for release-by-release updates.
 
 This plugin helps keep your vault clean by deleting images that are no longer referenced in your markdown notes.
 
@@ -14,7 +16,7 @@ If any image files are not referenced in any document, they can be deleted autom
 
 ### Deleted Image Destination
 
-Please make sure that you select the destination for deleted images under the "Clear Unused Images Settings" tab. You have 3 options:
+Please make sure that you select the destination for deleted images under the "Clear Unused Images Plus Settings" tab. You have 3 options:
 
 ![delete-destination](images/delete-destination.png)
 
@@ -67,7 +69,7 @@ You can now exclude all subfolders under the folder paths provided above:
 
     ![ribbon-icon-settings](images/ribbon-icon-settings.png)
 
-    - Or use the ribbon icon or open the Command Palette with `Ctrl/Cmd + P` and run `Clear Unused Images`.
+    - Or use the ribbon icon or open the Command Palette with `Ctrl/Cmd + P` and run `Clear Unused Images Plus`.
 
     ![command](images/command.png)
 

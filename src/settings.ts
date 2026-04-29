@@ -40,7 +40,7 @@ export class OzanClearImagesSettingsTab extends PluginSettingTab {
     display(): void {
         let { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl('h2', { text: 'Clear Images Settings' });
+        containerEl.createEl('h2', { text: 'Clear Unused Images Plus Settings' });
 
         new Setting(containerEl)
             .setName('Ribbon Icon')
