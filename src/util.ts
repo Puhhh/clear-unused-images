@@ -14,14 +14,27 @@ import { walkFrontmatterValues } from './frontmatterWalker';
 
 const bannerRegex = /!\[\[(.*?)\]\]/i;
 
+interface CanvasFileNode {
+    type: 'file';
+    file: string;
+}
+
+interface CanvasTextNode {
+    type: 'text';
+    text: string;
+}
+
+interface CanvasData {
+    nodes?: Array<CanvasFileNode | CanvasTextNode | Record<string, unknown>>;
+}
+
 // Create the List of Unused Images
 export const getUnusedAttachments = async (app: App, type: 'image' | 'all') => {
-    var allAttachmentsInVault: TFile[] = getAttachmentsInVault(app, type);
-    var unusedAttachments: TFile[] = [];
-    var usedAttachmentsSet: Set<string>;
+    const allAttachmentsInVault: TFile[] = getAttachmentsInVault(app, type);
+    const unusedAttachments: TFile[] = [];
 
     // Get Used Attachments in All Markdown Files
-    usedAttachmentsSet = await getAttachmentPathSetForVault(app, type);
+    const usedAttachmentsSet = await getAttachmentPathSetForVault(app, type);
 
     // Compare All Attachments vs Used Attachments
     allAttachmentsInVault.forEach((attachment) => {
@@ -52,47 +65,47 @@ const getAttachmentsInVault = (app: App, type: 'image' | 'all'): TFile[] => {
 
 // New Method for Getting All Used Attachments
 const getAttachmentPathSetForVault = async (app: App, type: 'image' | 'all'): Promise<Set<string>> => {
-    var attachmentsSet: Set<string> = new Set();
-    var resolvedLinks = app.metadataCache.resolvedLinks;
+    const attachmentsSet: Set<string> = new Set();
+    const resolvedLinks: Record<string, Record<string, number>> = app.metadataCache.resolvedLinks;
     if (resolvedLinks) {
-        for (const [mdFile, links] of Object.entries(resolvedLinks)) {
-            for (const [filePath, nr] of Object.entries(resolvedLinks[mdFile])) {
-                if (!(filePath as String).endsWith('.md')) {
+        for (const links of Object.values(resolvedLinks)) {
+            for (const filePath of Object.keys(links)) {
+                if (!filePath.endsWith('.md')) {
                     attachmentsSet.add(filePath);
                 }
             }
         }
     }
     // Loop Files and Check Frontmatter/Canvas
-    let allFiles = app.vault.getFiles();
+    const allFiles = app.vault.getFiles();
     for (let i = 0; i < allFiles.length; i++) {
-        let obsFile = allFiles[i];
+        const obsFile = allFiles[i];
         // Check Frontmatter for md files and additional links that might be missed in resolved links
         if (obsFile.extension === 'md') {
             // Frontmatter
-            let fileCache = app.metadataCache.getFileCache(obsFile);
+            const fileCache = app.metadataCache.getFileCache(obsFile);
             if (fileCache.frontmatter) {
                 collectFrontmatterAttachmentReferences(fileCache.frontmatter, app, obsFile.path, attachmentsSet, type);
             }
             // Any Additional Link
-            let linkMatches: LinkMatch[] = await getAllLinkMatchesInFile(obsFile, app);
-            for (let linkMatch of linkMatches) {
+            const linkMatches: LinkMatch[] = await getAllLinkMatchesInFile(obsFile, app);
+            for (const linkMatch of linkMatches) {
                 addToSet(attachmentsSet, linkMatch.linkText);
             }
         }
         // Check Canvas for links
         else if (obsFile.extension === 'canvas') {
-            let fileRead = await app.vault.cachedRead(obsFile);
+            const fileRead = await app.vault.cachedRead(obsFile);
             try {
-                let canvasData = JSON.parse(fileRead);
-                if (canvasData.nodes && canvasData.nodes.length > 0) {
+                const canvasData = JSON.parse(fileRead) as CanvasData;
+                if (Array.isArray(canvasData.nodes) && canvasData.nodes.length > 0) {
                     for (const node of canvasData.nodes) {
                         // node.type: 'text' | 'file'
-                        if (node.type === 'file') {
+                        if (isCanvasFileNode(node)) {
                             addToSet(attachmentsSet, node.file);
-                        } else if (node.type == 'text') {
-                            let linkMatches: LinkMatch[] = await getAllLinkMatchesInFile(obsFile, app, node.text);
-                            for (let linkMatch of linkMatches) {
+                        } else if (isCanvasTextNode(node)) {
+                            const linkMatches: LinkMatch[] = await getAllLinkMatchesInFile(obsFile, app, node.text);
+                            for (const linkMatch of linkMatches) {
                                 addToSet(attachmentsSet, linkMatch.linkText);
                             }
                         }
@@ -114,14 +127,13 @@ export const deleteFilesInTheList = async (
     plugin: OzanClearImages,
     app: App
 ): Promise<{ deletedImages: number; skippedImages: number; failedImages: number; logLines: string[] }> => {
-    var deleteOption = plugin.settings.deleteOption;
-    var deletedImages = 0;
-    var skippedImages = 0;
-    var failedImages = 0;
-    let logLines: string[] = [];
-    for (let file of fileList) {
+    const deleteOption = plugin.settings.deleteOption;
+    let deletedImages = 0;
+    let skippedImages = 0;
+    let failedImages = 0;
+    const logLines: string[] = [];
+    for (const file of fileList) {
         if (fileIsInExcludedFolder(file, plugin)) {
-            console.log('File not referenced but excluded: ' + file.path);
             skippedImages++;
             logLines.push(`[=] Skipped excluded file: ${file.path}`);
         } else {
@@ -157,24 +169,24 @@ export const deleteFilesInTheList = async (
 
 // Check if File is Under Excluded Folders
 const fileIsInExcludedFolder = (file: TFile, plugin: OzanClearImages): boolean => {
-    var excludedFoldersSettings = plugin.settings.excludedFolders;
-    var excludeSubfolders = plugin.settings.excludeSubfolders;
+    const excludedFoldersSettings = plugin.settings.excludedFolders;
+    const excludeSubfolders = plugin.settings.excludeSubfolders;
     if (excludedFoldersSettings === '') {
         return false;
     } else {
         // Get All Excluded Folder Paths
-        var excludedFolderPaths = splitExcludedFolders(excludedFoldersSettings);
+        const excludedFolderPaths = splitExcludedFolders(excludedFoldersSettings);
 
         if (excludeSubfolders) {
             // If subfolders included, check if any provided path covers the current folder path
-            for (let exludedFolderPath of excludedFolderPaths) {
+            for (const exludedFolderPath of excludedFolderPaths) {
                 if (isPathCoveredByExcludedFolder(file.parent.path, exludedFolderPath, true)) {
                     return true;
                 }
             }
         } else {
             // Full path of parent should match if subfolders are not included
-            for (let exludedFolderPath of excludedFolderPaths) {
+            for (const exludedFolderPath of excludedFolderPaths) {
                 if (isPathCoveredByExcludedFolder(file.parent.path, exludedFolderPath, false)) {
                     return true;
                 }
@@ -188,7 +200,7 @@ const fileIsInExcludedFolder = (file: TFile, plugin: OzanClearImages): boolean =
 /* ------------------ Helpers  ------------------ */
 
 export const getFormattedDate = () => {
-    let dt = new Date();
+    const dt = new Date();
     return dt.toLocaleDateString('en-GB', {
         year: 'numeric',
         month: '2-digit',
@@ -203,6 +215,14 @@ const addToSet = (setObj: Set<string>, value: string) => {
     if (!setObj.has(value)) {
         setObj.add(value);
     }
+};
+
+const isCanvasFileNode = (node: CanvasData['nodes'][number]): node is CanvasFileNode => {
+    return node.type === 'file' && typeof node.file === 'string';
+};
+
+const isCanvasTextNode = (node: CanvasData['nodes'][number]): node is CanvasTextNode => {
+    return node.type === 'text' && typeof node.text === 'string';
 };
 
 const resolveAttachmentReference = (
@@ -260,5 +280,17 @@ const collectFrontmatterAttachmentReferences = (
 };
 
 const getErrorMessage = (error: unknown): string => {
-    return error instanceof Error ? error.message : String(error);
+    if (error instanceof Error) {
+        return error.message;
+    }
+
+    if (typeof error === 'string') {
+        return error;
+    }
+
+    if (typeof error === 'number' || typeof error === 'boolean' || typeof error === 'bigint') {
+        return error.toString();
+    }
+
+    return 'Unknown error';
 };

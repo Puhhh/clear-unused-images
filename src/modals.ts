@@ -8,18 +8,17 @@ export class LogsModal extends Modal {
         this.logLines = logLines;
     }
 
-    onOpen() {
+    onOpen(): void {
         let { contentEl } = this;
-        let myModal = this;
 
         // Header
-        const headerWrapper = contentEl.createEl('div');
+        const headerWrapper = contentEl.createDiv();
         headerWrapper.addClass('unused-images-center-wrapper');
-        const headerEl = headerWrapper.createEl('h1', { text: 'Clear Unused Images Plus - Logs' });
+        const headerEl = headerWrapper.createEl('h1', { text: 'Clear unused images plus - logs' });
         headerEl.addClass('modal-title');
 
         // Information to show
-        const logs = contentEl.createEl('div');
+        const logs = contentEl.createDiv();
         logs.addClass('unused-images-logs');
         for (const line of this.logLines) {
             const lineEl = logs.createDiv();
@@ -27,12 +26,12 @@ export class LogsModal extends Modal {
         }
 
         // Close Button
-        const buttonWrapper = contentEl.createEl('div');
+        const buttonWrapper = contentEl.createDiv();
         buttonWrapper.addClass('unused-images-center-wrapper');
         const closeButton = buttonWrapper.createEl('button', { text: 'Close' });
         closeButton.addClass('unused-images-button');
         closeButton.addEventListener('click', () => {
-            myModal.close();
+            this.close();
         });
     }
 }

@@ -1,4 +1,4 @@
-import { Plugin, TFile, Notice } from 'obsidian';
+import { App, Modal, Notice, Plugin, TFile } from 'obsidian';
 import { OzanClearImagesSettingsTab } from './settings';
 import { OzanClearImagesSettings, DEFAULT_SETTINGS } from './settings';
 import { LogsModal } from './modals';
@@ -18,19 +18,26 @@ export default class OzanClearImages extends Plugin {
     private vaultReadyCallbacks: Array<() => void | Promise<void>> = [];
     private vaultReadyListenersRegistered = false;
 
-    async onload() {
-        console.log('Clear Unused Images Plus plugin loaded...');
+    onload(): void {
+        void this.initializePlugin();
+    }
+
+    private async initializePlugin(): Promise<void> {
         this.addSettingTab(new OzanClearImagesSettingsTab(this.app, this));
         await this.loadSettings();
         this.addCommand({
             id: 'clear-images-obsidian',
-            name: 'Clear Unused Images Plus',
-            callback: () => this.clearUnusedAttachments('image'),
+            name: 'Clear unused images',
+            callback: () => {
+                void this.clearUnusedAttachments('image');
+            },
         });
         this.addCommand({
             id: 'clear-unused-attachments',
-            name: 'Clear Unused Attachments',
-            callback: () => this.clearUnusedAttachments('all'),
+            name: 'Clear unused attachments',
+            callback: () => {
+                void this.clearUnusedAttachments('all');
+            },
         });
         this.refreshIconRibbon();
         this.scheduleVaultLoadCleanup();
@@ -39,11 +46,12 @@ export default class OzanClearImages extends Plugin {
 
     onunload() {
         this.clearPeriodicCleanupTimer();
-        console.log('Clear Unused Images Plus plugin unloaded...');
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const loadedSettings: unknown = await this.loadData();
+        const settingsOverride = isSettingsOverride(loadedSettings) ? loadedSettings : {};
+        this.settings = { ...DEFAULT_SETTINGS, ...settingsOverride };
     }
 
     async saveSettings() {
@@ -53,8 +61,8 @@ export default class OzanClearImages extends Plugin {
     refreshIconRibbon = () => {
         this.ribbonIconEl?.remove();
         if (this.settings.ribbonIcon) {
-            this.ribbonIconEl = this.addRibbonIcon('image-file', 'Clear Unused Images Plus', (event): void => {
-                this.clearUnusedAttachments('image');
+            this.ribbonIconEl = this.addRibbonIcon('image-file', 'Clear unused images', (): void => {
+                void this.clearUnusedAttachments('image');
             });
         }
     };
@@ -110,7 +118,7 @@ export default class OzanClearImages extends Plugin {
         });
 
         if (this.settings.autoCleanEveryXMinutes && this.settings.deleteOption === 'permanent') {
-            new Notice('Periodic cleanup is disabled while Permanently Delete is selected.');
+            new Notice('Periodic cleanup is disabled while permanently delete is selected.');
         }
     }
 
@@ -181,8 +189,8 @@ export default class OzanClearImages extends Plugin {
 
         this.cleanupInProgress = true;
         try {
-            var unusedAttachments: TFile[] = await Util.getUnusedAttachments(this.app, type);
-            var len = unusedAttachments.length;
+            const unusedAttachments: TFile[] = await Util.getUnusedAttachments(this.app, type);
+            const len = unusedAttachments.length;
             if (len > 0) {
                 if (type === 'all') {
                     const reviewAccepted = await new CleanupReviewModal(
@@ -195,7 +203,7 @@ export default class OzanClearImages extends Plugin {
                     }
                 }
 
-                if (this.settings.deleteOption === 'permanent' && !this.confirmPermanentDelete(len, type)) {
+                if (this.settings.deleteOption === 'permanent' && !(await this.confirmPermanentDelete(len, type))) {
                     new Notice('Cleanup cancelled.');
                     return;
                 }
@@ -226,7 +234,7 @@ export default class OzanClearImages extends Plugin {
                 }
 
                 if (this.settings.logsModal || failedImages > 0) {
-                    let modal = new LogsModal(logs, this.app);
+                    const modal = new LogsModal(logs, this.app);
                     modal.open();
                 }
             } else {
@@ -240,13 +248,75 @@ export default class OzanClearImages extends Plugin {
         }
     };
 
-    confirmPermanentDelete(len: number, type: 'all' | 'image'): boolean {
-        if (typeof globalThis.confirm !== 'function') {
-            return false;
+    confirmPermanentDelete(len: number, type: 'all' | 'image'): Promise<boolean> {
+        return new PermanentDeleteConfirmationModal(this.app, len, type).prompt();
+    }
+}
+
+const isSettingsOverride = (value: unknown): value is Partial<OzanClearImagesSettings> => {
+    return typeof value === 'object' && value !== null;
+};
+
+class PermanentDeleteConfirmationModal extends Modal {
+    private readonly message: string;
+    private resolveDecision: ((decision: boolean) => void) | undefined;
+    private decisionResolved = false;
+
+    constructor(app: App, len: number, type: 'all' | 'image') {
+        super(app);
+        this.message = `Permanently delete ${len.toString()} unused ${
+            type === 'image' ? 'image(s)' : 'attachment(s)'
+        }? This cannot be undone.`;
+    }
+
+    prompt(): Promise<boolean> {
+        return new Promise<boolean>((resolve) => {
+            this.resolveDecision = resolve;
+            this.open();
+        });
+    }
+
+    onOpen(): void {
+        const { contentEl } = this;
+        contentEl.empty();
+
+        const headerWrapper = contentEl.createDiv();
+        headerWrapper.addClass('unused-images-center-wrapper');
+        headerWrapper.createEl('h1', { text: 'Confirm permanent delete' }).addClass('modal-title');
+
+        contentEl.createEl('p', { text: this.message });
+
+        const buttonWrapper = contentEl.createDiv();
+        buttonWrapper.addClass('unused-images-center-wrapper');
+
+        const cancelButton = buttonWrapper.createEl('button', { text: 'Cancel' });
+        cancelButton.addClass('unused-images-button');
+        cancelButton.addEventListener('click', () => {
+            this.closeWithDecision(false);
+        });
+
+        const deleteButton = buttonWrapper.createEl('button', { text: 'Delete permanently' });
+        deleteButton.addClass('unused-images-button');
+        deleteButton.addEventListener('click', () => {
+            this.closeWithDecision(true);
+        });
+    }
+
+    onClose(): void {
+        this.contentEl.empty();
+        if (!this.decisionResolved) {
+            this.decisionResolved = true;
+            this.resolveDecision?.(false);
+        }
+    }
+
+    private closeWithDecision(decision: boolean): void {
+        if (this.decisionResolved) {
+            return;
         }
 
-        return globalThis.confirm(
-            `Permanently delete ${len.toString()} unused ${type === 'image' ? 'image(s)' : 'attachment(s)'}? This cannot be undone.`
-        );
+        this.decisionResolved = true;
+        this.resolveDecision?.(decision);
+        this.close();
     }
 }

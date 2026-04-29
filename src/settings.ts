@@ -38,49 +38,50 @@ export class OzanClearImagesSettingsTab extends PluginSettingTab {
     }
 
     display(): void {
-        let { containerEl } = this;
+        const { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl('h2', { text: 'Clear Unused Images Plus Settings' });
+
+        new Setting(containerEl).setName('Behavior').setHeading();
 
         new Setting(containerEl)
-            .setName('Ribbon Icon')
-            .setDesc('Turn on if you want Ribbon Icon for clearing the images.')
+            .setName('Ribbon icon')
+            .setDesc('Turn on if you want ribbon icon for clearing the images.')
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.ribbonIcon).onChange((value) => {
                     this.plugin.settings.ribbonIcon = value;
-                    this.plugin.saveSettings();
+                    void this.plugin.saveSettings();
                     this.plugin.refreshIconRibbon();
                 })
             );
 
         new Setting(containerEl)
-            .setName('Delete Logs')
+            .setName('Delete logs')
             .setDesc(
-                'Turn off if you dont want to view the delete logs Modal to pop up after deletion is completed. It wont appear if no image is deleted'
+                'Turn off if you dont want to view the delete logs modal to pop up after deletion is completed. It wont appear if no image is deleted'
             )
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.logsModal).onChange((value) => {
                     this.plugin.settings.logsModal = value;
-                    this.plugin.saveSettings();
+                    void this.plugin.saveSettings();
                 })
             );
 
         new Setting(containerEl)
-            .setName('Clean Images On Vault Load')
+            .setName('Clean images on vault load')
             .setDesc(
                 'Automatically run the unused image cleanup once after the vault layout is ready. This setting only applies to images and starts working on the next vault load. Permanent delete will still ask for confirmation.'
             )
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.autoCleanOnVaultLoad).onChange((value) => {
                     this.plugin.settings.autoCleanOnVaultLoad = value;
-                    this.plugin.saveSettings();
+                    void this.plugin.saveSettings();
                 })
             );
 
         new Setting(containerEl)
-            .setName('Clean Images Every X Minutes')
+            .setName('Clean images every X minutes')
             .setDesc(
-                'Automatically run the unused image cleanup every X minutes while Obsidian stays open. The timer starts after the vault layout is ready, waits for the full interval before the first run, and does not run when Permanently Delete is selected.'
+                'Automatically run the unused image cleanup every X minutes while Obsidian stays open. The timer starts after the vault layout is ready, waits for the full interval before the first run, and does not run when permanently delete is selected.'
             )
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.autoCleanEveryXMinutes).onChange(async (value) => {
@@ -91,7 +92,7 @@ export class OzanClearImagesSettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
-            .setName('Cleanup Interval In Minutes')
+            .setName('Cleanup interval in minutes')
             .setDesc('Choose how many minutes the plugin waits between automatic image cleanup runs. Minimum: 1 minute.')
             .addText((text) =>
                 text
@@ -109,12 +110,12 @@ export class OzanClearImagesSettingsTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
-            .setName('Deleted Image Destination')
+            .setName('Deleted image destination')
             .setDesc('Select where you want images to be moved once they are deleted')
             .addDropdown((dropdown) => {
-                dropdown.addOption('permanent', 'Delete Permanently');
-                dropdown.addOption('.trash', 'Move to Obsidian Trash');
-                dropdown.addOption('system-trash', 'Move to System Trash');
+                dropdown.addOption('permanent', 'Delete permanently');
+                dropdown.addOption('.trash', 'Move to Obsidian trash');
+                dropdown.addOption('system-trash', 'Move to system trash');
                 dropdown.setValue(this.plugin.settings.deleteOption);
                 dropdown.onChange(async (option) => {
                     this.plugin.settings.deleteOption = option;
@@ -124,25 +125,25 @@ export class OzanClearImagesSettingsTab extends PluginSettingTab {
             });
 
         new Setting(containerEl)
-            .setName('Excluded Folder Full Paths')
+            .setName('Excluded folder full paths')
             .setDesc(
-                `Provide the FULL path of the folder names (Case Sensitive) divided by comma (,) to be excluded from clearing. 
-					i.e. For images under Personal/Files/Zodiac -> Personal/Files/Zodiac should be used for exclusion`
+                `Provide the full path of the folder names (case sensitive) divided by comma (,) to be excluded from clearing.
+					I.e. For images under personal/files/zodiac -> personal/files/zodiac should be used for exclusion`
             )
             .addTextArea((text) =>
                 text.setValue(this.plugin.settings.excludedFolders).onChange((value) => {
                     this.plugin.settings.excludedFolders = value;
-                    this.plugin.saveSettings();
+                    void this.plugin.saveSettings();
                 })
             );
 
         new Setting(containerEl)
-            .setName('Exclude Subfolders')
+            .setName('Exclude subfolders')
             .setDesc('Turn on this option if you want to also exclude all subfolders of the folder paths provided above.')
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.excludeSubfolders).onChange((value) => {
                     this.plugin.settings.excludeSubfolders = value;
-                    this.plugin.saveSettings();
+                    void this.plugin.saveSettings();
                 })
             );
 

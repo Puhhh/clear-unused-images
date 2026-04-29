@@ -2,6 +2,14 @@
 
 All notable changes to this fork are documented in this file.
 
+## 1.4.4
+
+- Added ESLint integration with the Obsidian plugin recommended rules.
+- Fixed required Obsidian review issues for UI text, async handling, console usage, and TypeScript primitives.
+- Removed regex lookbehind from link detection for iOS compatibility.
+- Replaced the browser confirm call with an Obsidian confirmation modal before permanent deletion.
+- Added a regression test to keep link detection compatible with older iOS versions.
+
 ## 1.4.3
 
 - Renamed the plugin to `Clear Unused Images Plus`.

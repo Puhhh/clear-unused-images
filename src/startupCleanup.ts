@@ -20,7 +20,7 @@ export const createVaultLoadCleanupScheduler = (
 ) => {
     let alreadyScheduled = false;
 
-    return async (enabled: boolean): Promise<void> => {
+    return (enabled: boolean): void => {
         if (!enabled || alreadyScheduled) {
             return;
         }

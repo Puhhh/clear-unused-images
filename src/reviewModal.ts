@@ -17,25 +17,25 @@ export class CleanupReviewModal extends Modal {
         });
     }
 
-    onOpen() {
+    onOpen(): void {
         const { contentEl } = this;
         contentEl.empty();
 
-        const headerWrapper = contentEl.createEl('div');
+        const headerWrapper = contentEl.createDiv();
         headerWrapper.addClass('unused-images-center-wrapper');
-        headerWrapper.createEl('h1', { text: 'Review Unused Files' }).addClass('modal-title');
+        headerWrapper.createEl('h1', { text: 'Review unused files' }).addClass('modal-title');
 
         contentEl.createEl('p', {
-            text: 'These files are about to be processed by Clear Unused Attachments. Review the exact paths before continuing.',
+            text: 'These files are about to be processed by clear unused attachments. Review the exact paths before continuing.',
         });
 
-        const listWrapper = contentEl.createEl('div');
+        const listWrapper = contentEl.createDiv();
         listWrapper.addClass('unused-images-logs');
         for (const filePath of this.filePaths) {
             listWrapper.createDiv({ text: filePath });
         }
 
-        const buttonWrapper = contentEl.createEl('div');
+        const buttonWrapper = contentEl.createDiv();
         buttonWrapper.addClass('unused-images-center-wrapper');
 
         const cancelButton = buttonWrapper.createEl('button', { text: 'Cancel' });
